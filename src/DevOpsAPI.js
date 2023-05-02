@@ -15,6 +15,19 @@ async function fetchSprints() {
   }
 }
 
+async function fetchSprintByName(sprintName) {
+  const allSprints = await fetchSprints();
+  console.log(allSprints);
+  const targetSprint = allSprints.value.find((sprint) => sprint.name === sprintName);
+
+  if (targetSprint) {
+    return targetSprint;
+  } else {
+    console.error(`Sprint with name '${sprintName}' not found.`);
+    return null;
+  }
+}
+
 async function fetchCurrentSprint() {
   const sprints = await fetchSprints();
   const currentSprint = sprints.value.find((sprint) => {
@@ -80,12 +93,14 @@ async function fetchWorkItemDetails(workItemIds) {
 }
 
 async function analyzeSprint(sprint, workItemDetails, team) {
+  const areaPaths = new Set();
   const stats = {
     title: `Sprint Stats for '${team}`,
     sprintName: sprint.name,
     startDate: sprint.attributes.startDate,
     endDate: sprint.attributes.finishDate,
     workItemsCompleted: workItemDetails.length,
+    userStats: [],
     velocity: 0,
     userStories: 0,
     bugs: 0,
@@ -97,6 +112,11 @@ async function analyzeSprint(sprint, workItemDetails, team) {
   const usersStats = {};
 
   workItemDetails.forEach((workItem) => {
+    const areaPath = workItem.fields["System.AreaPath"];
+    if (areaPath) {
+      areaPaths.add(areaPath);
+    }
+
     const type = workItem.fields["System.WorkItemType"];
     let completedBy = workItem.fields["System.AssignedTo"];
     if (completedBy !== undefined) {
@@ -106,7 +126,7 @@ async function analyzeSprint(sprint, workItemDetails, team) {
     }
 
     if (!usersStats[completedBy]) {
-      usersStats[completedBy] = { userStories: 0, bugs: 0, issues: 0 };
+      usersStats[completedBy] = { displayName: completedBy ,userStories: 0, bugs: 0, issues: 0 };
     }
 
     switch (type) {
@@ -140,10 +160,12 @@ async function analyzeSprint(sprint, workItemDetails, team) {
     if (userStat.bugs > bugBasher.count) {
       bugBasher = { name: user, count: userStat.bugs };
     }
+    stats.userStats.push(userStat);
   }
 
   stats.topPerformer = topPerformer.name + ": " + topPerformer.count;
   stats.bugBasher = bugBasher.name + ": " + bugBasher.count;
+  stats.areaPaths = Array.from(areaPaths);
 
   return stats;
 }
@@ -226,11 +248,39 @@ async function fetchTeamNames(_organization, _project, patToken) {
   }
 }
 
+async function fetchSprintNames() {
+  const pageSize = 100;
+  let skip = 0;
+
+  const url = `https://dev.azure.com/${organization}/${project}/_apis/work/teamsettings/iterations?api-version=${apiVersion}&$skip=${skip}&$top=${pageSize}`;
+  try {
+    const response = await axios.get(url, authHeader);
+    const sprints = response.data.value.map((sprint) => sprint.name);
+    return sprints;
+  } catch (error) {
+    console.error("Error fetching all sprints:", error.message);
+  }
+}
+
+async function analyzeSelectedSprint(sprintName, teams) {
+  const sprint = await fetchSprintByName(sprintName.value);
+  const teamStatsPromises = teams.map(async (team) => {
+    const areaPaths = await fetchTeamAreaPaths(team.value);
+    const workItemIds = await fetchWorkItems(sprint.name, areaPaths);
+    const workItemDetails = await fetchWorkItemDetails(workItemIds);
+    const stats = await analyzeSprint(sprint, workItemDetails, team.value);
+    return stats;
+  });
+  const teamStats = await Promise.all(teamStatsPromises);
+  return teamStats;
+}
+
 async function analyzeCurrentSprint(teams) {
   const currentSprint = await fetchCurrentSprint();
   const teamStatsPromises = teams.map(async (team) => {
     const areaPaths = await fetchTeamAreaPaths(team.value);
     const workItemIds = await fetchWorkItems(currentSprint.name, areaPaths);
+    console.log(currentSprint.name);
     const workItemDetails = await fetchWorkItemDetails(workItemIds);
     const stats = await analyzeSprint(
       currentSprint,
@@ -251,5 +301,7 @@ export {
   fetchTeamAreaPaths,
   fetchWorkItems,
   fetchCurrentSprint,
+  fetchSprintNames as fetchAllSprints,
   analyzeCurrentSprint,
+  analyzeSelectedSprint
 };
