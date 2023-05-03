@@ -126,7 +126,7 @@ async function analyzeSprint(sprint, workItemDetails, team) {
     }
 
     if (!usersStats[completedBy]) {
-      usersStats[completedBy] = { displayName: completedBy ,userStories: 0, bugs: 0, issues: 0 };
+      usersStats[completedBy] = { displayName: completedBy ,userStories: 0, bugs: 0, issues: 0, storyPoints: 0 };
     }
 
     switch (type) {
@@ -135,6 +135,7 @@ async function analyzeSprint(sprint, workItemDetails, team) {
         usersStats[completedBy].userStories++;
         const effort = workItem.fields["Microsoft.VSTS.Scheduling.StoryPoints"];
         stats.velocity += effort;
+        usersStats[completedBy].storyPoints += effort;
         break;
       case "Bug":
         stats.bugs++;

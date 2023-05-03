@@ -15,7 +15,7 @@ import {
   fetchAllSprints,
   analyzeSelectedSprint,
 } from "./DevOpsAPI";
-import Select from "react-select"; // Add this import
+import Select from "react-select";
 
 function App() {
   const [teams, setTeams] = useState([]);
@@ -209,6 +209,7 @@ function App() {
                         <td>{userStat.userStories}</td>
                         <td>{userStat.bugs}</td>
                         <td>{userStat.issues}</td>
+                        <td>{userStat.storyPoints}</td>
                       </tr>
                     ))}
                   </tbody>
