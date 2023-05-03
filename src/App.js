@@ -12,7 +12,6 @@ import {
 import "./App.css";
 import {
   fetchTeamNames,
-  analyzeCurrentSprint,
   fetchAllSprints,
   analyzeSelectedSprint,
 } from "./DevOpsAPI";
