@@ -200,6 +200,7 @@ function App() {
                       <th>User Stories</th>
                       <th>Bugs</th>
                       <th>Issues</th>
+                      <th>Story Points</th>
                     </tr>
                   </thead>
                   <tbody>
